@@ -1,0 +1,61 @@
+
+package main
+
+
+import SDL "vendor:sdl3"
+import "core:fmt"
+import "core:os"
+
+import "base:runtime"
+
+ctx: runtime.Context
+
+window: ^SDL.Window
+renderer: ^SDL.Renderer
+
+
+sdl_app_init :: proc "c" (appstate: ^rawptr, argc: i32, argv: [^]cstring) -> SDL.AppResult {
+    context = ctx
+    fmt.println("init")
+    _ = SDL.SetAppMetadata("Example", "1.0", "com.example")
+
+    if (!SDL.Init(SDL.INIT_VIDEO)) {
+        fmt.println("fail init video")
+
+        return .FAILURE
+    }
+    if (!SDL.CreateWindowAndRenderer("examples", 640, 480, {}, &window, &renderer)){
+        fmt.println("fail create window")
+        return .FAILURE
+    }
+
+    return .CONTINUE
+}
+
+sdl_app_event :: proc "c" (appstate: rawptr, event: ^SDL.Event) -> SDL.AppResult {
+    context = ctx
+    fmt.println("event")
+    if event.type == .QUIT {
+        return .SUCCESS
+    }
+    return .CONTINUE
+}
+
+sdl_app_iterate :: proc "c" (appstate: rawptr) -> SDL.AppResult {
+    context = ctx
+    fmt.println("iterate")
+    return .CONTINUE
+}
+
+sdl_app_quit :: proc "c" (appstate: rawptr, result: SDL.AppResult) {
+    context = ctx
+    fmt.println("quit")
+
+}
+
+
+main :: proc () {
+    ctx = context
+    //args := os.args
+    SDL.EnterAppMainCallbacks(0, nil, sdl_app_init, sdl_app_iterate, sdl_app_event, sdl_app_quit)
+}
