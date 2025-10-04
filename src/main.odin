@@ -5,7 +5,8 @@ package main
 import SDL "vendor:sdl3"
 //import IMG "vendor:sdl3/image"
 import "core:fmt"
-import "core:os"
+import "core:c"
+// import "core:os"
 
 import "base:runtime"
 
@@ -17,26 +18,45 @@ texture: ^SDL.Texture
 texture_size: [2]i32
 
 
-@(export) emscripten_cancel_main_loop :: proc "c" () {
+// @(export) emscripten_cancel_main_loop :: proc "c" () {
 
+// }
+// @(export) abort :: proc "c" () {
+
+// }
+@export
+main_start :: proc "c" () {
+    sdl_app_init(nil, 0, nil)
 }
-@(export) abort :: proc "c" () {
+
+@export
+main_update :: proc "c" () -> bool {
+    return sdl_app_iterate(nil) == .CONTINUE
+}
+
+@export
+main_end :: proc "c" () {
+    sdl_app_quit(nil, {})
+}
+
+@export
+web_window_size_changed :: proc "c" (w: c.int, h: c.int) {
 
 }
 
 
 sdl_app_init :: proc "c" (appstate: ^rawptr, argc: i32, argv: [^]cstring) -> SDL.AppResult {
     context = ctx
-    fmt.println("init")
+    // fmt.println("init")
     _ = SDL.SetAppMetadata("Example", "1.0", "com.example")
 
     if (!SDL.Init(SDL.INIT_VIDEO)) {
-        fmt.println("fail init video")
+        // fmt.println("fail init video")
 
         return .FAILURE
     }
     if (!SDL.CreateWindowAndRenderer("examples", 640, 480, {}, &window, &renderer)){
-        fmt.println("fail create window")
+        // fmt.println("fail create window")
         return .FAILURE
     }
     surface := SDL.LoadBMP("sample.bmp")
@@ -49,7 +69,7 @@ sdl_app_init :: proc "c" (appstate: ^rawptr, argc: i32, argv: [^]cstring) -> SDL
 
 sdl_app_event :: proc "c" (appstate: rawptr, event: ^SDL.Event) -> SDL.AppResult {
     context = ctx
-    fmt.println("event")
+    // fmt.println("event")
     if event.type == .QUIT {
         return .SUCCESS
     }
@@ -71,15 +91,18 @@ sdl_app_iterate :: proc "c" (appstate: rawptr) -> SDL.AppResult {
 }
 
 sdl_app_quit :: proc "c" (appstate: rawptr, result: SDL.AppResult) {
-    context = ctx
-    fmt.println("quit")
+    // fmt.println("quit")
 
 }
 
 
-main :: proc () {
-    fmt.println("main")
-    ctx = context
-    //args := os.args
-    SDL.EnterAppMainCallbacks(0, nil, sdl_app_init, sdl_app_iterate, sdl_app_event, sdl_app_quit)
-}
+//when ODIN_OS != .Freestanding {
+
+    main :: proc () {
+        // fmt.println("main")
+        ctx = context
+        //args := os.args
+        SDL.EnterAppMainCallbacks(0, nil, sdl_app_init, sdl_app_iterate, sdl_app_event, sdl_app_quit)
+    }
+
+//}
