@@ -10,6 +10,8 @@ import "core:c"
 
 import "base:runtime"
 
+import "emscripten"
+
 ctx: runtime.Context
 
 window: ^SDL.Window
@@ -27,6 +29,18 @@ texture_size: [2]i32
 @export
 main_start :: proc "c" () {
     sdl_app_init(nil, 0, nil)
+
+
+    fetch_attr := emscripten.emscripten_fetch_attr_t {}
+    emscripten.emscripten_fetch_attr_init(&fetch_attr)
+    fetch_attr.onsuccess = fetch_success
+    emscripten.emscripten_fetch(&fetch_attr, "/sample.bmp")
+}
+
+fetch_success :: proc "c" (^emscripten.emscripten_fetch_t) {
+    context = ctx
+    fmt.println("success")
+
 }
 
 @export
@@ -78,13 +92,20 @@ sdl_app_event :: proc "c" (appstate: rawptr, event: ^SDL.Event) -> SDL.AppResult
 
 sdl_app_iterate :: proc "c" (appstate: rawptr) -> SDL.AppResult {
     context = ctx
+    //fmt.println("hello")
 
     SDL.SetRenderDrawColor(renderer, 0, 0, 0, 255)
-    SDL.RenderClear(renderer)
+    //SDL.RenderClear(renderer)
 
     rect := SDL.FRect{w = f32(texture_size.x), h = f32(texture_size.y)}
-
-    SDL.RenderTexture(renderer, texture, nil, &rect)
+    rect.w = 100
+    rect.h = 100
+    //SDL.RenderTexture(renderer, texture, nil, &rect)
+    //SDL.SetRenderDrawBlendMode(renderer, .ADD)
+    SDL.SetRenderDrawColor(renderer, 255, 0, 0, 255)
+    SDL.RenderLine(renderer, 0, 0, 100, 100)
+    SDL.RenderRect(renderer, &rect)
+    SDL.RenderFillRect(renderer, &rect)
     SDL.RenderPresent(renderer)
 
     return .CONTINUE
@@ -97,12 +118,12 @@ sdl_app_quit :: proc "c" (appstate: rawptr, result: SDL.AppResult) {
 
 
 //when ODIN_OS != .Freestanding {
-
+/*
     main :: proc () {
         // fmt.println("main")
         ctx = context
         //args := os.args
         SDL.EnterAppMainCallbacks(0, nil, sdl_app_init, sdl_app_iterate, sdl_app_event, sdl_app_quit)
     }
-
+*/
 //}
