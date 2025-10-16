@@ -24,7 +24,8 @@ renderer: ^SDL.Renderer
 texture: ^SDL.Texture
 texture_size: [2]i32
 engine: ^TTF.TextEngine
-
+font: ^TTF.Font
+text: ^TTF.Text
 
 // @(export) emscripten_cancel_main_loop :: proc "c" () {
 
@@ -38,14 +39,28 @@ main_start :: proc "c" () {
     sdl_app_init(nil, 0, nil)
 
 
-//    request_data("/sample.jpg")
-    fetch_attr := emscripten.emscripten_fetch_attr_t {}
-    emscripten.emscripten_fetch_attr_init(&fetch_attr)
-    fetch_attr.onsuccess = fetch_success
-    fetch_attr.attributes = emscripten.EMSCRIPTEN_FETCH_LOAD_TO_MEMORY
-    emscripten.emscripten_fetch(&fetch_attr, "/sample.jpg")
+    context = ctx
+    request_data("/sample.jpg", assign_texture)
+    request_data("/Play-Regular.ttf", assign_font)
 }
 
+assign_texture :: proc (bytes: []byte) {
+    io := SDL.IOFromConstMem(&bytes[0], len(bytes))
+    texture = IMG.LoadTexture_IO(renderer, io, false)
+}
+
+assign_font :: proc (bytes: []byte) {
+    io := SDL.IOFromConstMem(&bytes[0], len(bytes))
+    font = TTF.OpenFontIO(io, false, 72)
+
+    if font == nil {
+        fmt.println("unable to load font:", SDL.GetError())
+    }
+
+    text = TTF.CreateText(engine, font, "My Text", 0)
+    TTF.SetTextColor(text, 255, 255, 255, 255)
+
+}
 
 fetch_success :: proc "c" (result: ^emscripten.emscripten_fetch_t) {
     context = ctx
@@ -57,18 +72,19 @@ fetch_success :: proc "c" (result: ^emscripten.emscripten_fetch_t) {
     }
 
     bytes := data[0:size]
-    image, err := image.load_from_bytes(bytes)
-
-    io := SDL.IOFromConstMem(data, uint(size))
-    texture = IMG.LoadTexture_IO(renderer, io, false)
-
+    callback := (proc(bytes: []byte))(result.userData)
+    callback(bytes)
 }
 
-/*
-request_data(url: cstring, callback: proc(bytes: []byte)) {
 
+request_data :: proc (url: cstring, callback: proc(bytes: []byte)) {
+    fetch_attr := emscripten.emscripten_fetch_attr_t {}
+    emscripten.emscripten_fetch_attr_init(&fetch_attr)
+    fetch_attr.onsuccess = fetch_success
+    fetch_attr.attributes = emscripten.EMSCRIPTEN_FETCH_LOAD_TO_MEMORY
+    fetch_attr.userData = rawptr(callback)
+    emscripten.emscripten_fetch(&fetch_attr, url)
 }
-*/
 
 @export
 main_update :: proc "c" () -> bool {
@@ -92,6 +108,12 @@ sdl_app_init :: proc "c" (appstate: ^rawptr, argc: i32, argv: [^]cstring) -> SDL
     if (!SDL.Init(SDL.INIT_VIDEO)) {
         return .FAILURE
     }
+
+    if !TTF.Init() {
+        fmt.println("Failed to initialize TTF engine")
+        return .FAILURE
+    }
+
     if (!SDL.CreateWindowAndRenderer("examples", 640, 480, {}, &window, &renderer)){
         return .FAILURE
     }
@@ -133,7 +155,12 @@ sdl_app_iterate :: proc "c" (appstate: rawptr) -> SDL.AppResult {
        SDL.RenderTexture(renderer, texture, nil, &rect)
     }
 
+    if text != nil {
+        TTF.DrawRendererText(text, 100, 100)
+    }
+
     SDL.RenderPresent(renderer)
+
 
 
     return .CONTINUE
